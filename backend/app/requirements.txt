@@ -6,3 +6,13 @@ imagehash
 python-multipart
 pydantic
 requests
+fastapi 
+uvicorn[standard] 
+aioboto3 
+boto3 
+sqlalchemy[asyncio] 
+asyncpg 
+python-dotenv 
+pillow 
+imagehash 
+pydantic
