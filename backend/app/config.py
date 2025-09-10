@@ -1,7 +1,10 @@
-from pydantic import BaseSettings
+from pathlib import Path
+from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    aws_region: str = "ap-south-1"
+    aws_access_key_id: str
+    aws_secret_access_key: str
+    aws_region: str
     s3_bucket: str
     database_url: str
     phash_hamming_threshold: int = 10
@@ -9,7 +12,7 @@ class Settings(BaseSettings):
     concurrency: int = 6
 
     class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+        env_file = str(Path(__file__).parent / ".env")  # points to backend/app/.env
+        extra = "allow"
 
 settings = Settings()
