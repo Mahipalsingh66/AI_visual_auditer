@@ -1,10 +1,10 @@
 import asyncio, uuid
 from datetime import datetime
-from .s3_rek_client import list_objects, get_object_bytes, detect_faces_bytes, detect_labels_bytes, detect_text_bytes
-from .image_utils import compute_phash, phash_hamming_distance
-from .crud import upsert_image_record, insert_audit, get_recent_images_phashes
-from .config import settings
-from .rules_loader import load_rules
+from s3_rek_client import list_objects, get_object_bytes, detect_faces_bytes, detect_labels_bytes, detect_text_bytes
+from image_utils import compute_phash, phash_hamming_distance
+from crud import upsert_image_record, insert_audit, get_recent_images_phashes
+from config import settings
+from rules_loader import load_rules
 
 RULES = load_rules()
 

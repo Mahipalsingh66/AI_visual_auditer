@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, JSON, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
-from .database import Base
+from database import Base
 
 class Image(Base):
     __tablename__ = "images"

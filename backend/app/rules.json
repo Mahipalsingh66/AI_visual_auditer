@@ -1,0 +1,12 @@
+[
+  {
+    "id": "rule_signage_vi_logo",
+    "group": "Store Front",
+    "section": "Signage",
+    "sub_section": "Vi Logo",
+    "norms": "Vi logo must be present and clearly visible at the store entrance.",
+    "visual_audit_type": "LabelCheck",
+    "expected_labels": ["Vi Logo"],
+    "min_confidence": 80.0
+  }
+]

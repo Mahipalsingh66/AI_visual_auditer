@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>AI Visual Audit — Demo Checklist Tree</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f6f8fa; --card:#ffffff; --accent:#2b78e4; --muted:#6b7280;
+    }
+    body{font-family:Inter,Segoe UI,Roboto,Arial; background:var(--bg); margin:0; color:#111}
+    .container{max-width:1100px; margin:28px auto; padding:20px;}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:18px;}
+    header h1{margin:0;font-size:20px;}
+    .card{background:var(--card); border-radius:10px; box-shadow:0 6px 18px rgba(30,30,40,0.06); padding:18px;}
+    .flex{display:flex;gap:18px;}
+    .left{width:620px;}
+    .right{flex:1; min-width:250px;}
+    .section{border:1px solid #e6e9ee;border-radius:8px;margin-bottom:12px;padding:10px;background:linear-gradient(180deg,rgba(255,255,255,0.6),transparent)}
+    .section-head{display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
+    .section-title{font-weight:600}
+    .meta{font-size:13px;color:var(--muted)}
+    .checks{margin-top:12px;padding-left:8px}
+    .check{display:flex;align-items:center;justify-content:space-between;padding:8px;border-radius:6px;}
+    .check:nth-child(odd){background:rgba(43,120,228,0.03)}
+    .check-left{display:flex;align-items:center;gap:12px}
+    .checkbox{width:22px;height:22px;border-radius:5px;border:2px solid #cfd8e3;display:flex;align-items:center;justify-content:center;cursor:pointer}
+    .checkbox.checked{background:var(--accent);border-color:var(--accent);color:white;font-weight:700}
+    .small{font-size:13px;color:var(--muted)}
+    .score-pill{background:#f3f6fb;border-radius:999px;padding:6px 10px;font-weight:600;color:var(--accent)}
+    .summary{display:flex;flex-direction:column;gap:12px}
+    .summary-row{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px;background:linear-gradient(180deg,rgba(0,0,0,0.02),transparent)}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    button{border:0;padding:8px 12px;border-radius:8px;cursor:pointer;background:var(--accent);color:white}
+    button.ghost{background:#fff;border:1px solid #e6e9ee;color:var(--accent)}
+    .export{display:flex;gap:8px}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    table th, table td{padding:8px;border-bottom:1px solid #eef2f6;text-align:left}
+    .badge{display:inline-block;padding:6px 8px;border-radius:8px;background:#eef7ff;color:var(--accent);font-weight:600}
+    .small-muted{font-size:12px;color:var(--muted)}
+    .thumbnail{width:80px;height:60px;object-fit:cover;border-radius:6px;border:1px solid #e9eef6}
+    .top-actions{display:flex;gap:8px;align-items:center;margin-left:auto}
+    .footer-note{font-size:13px;color:var(--muted);margin-top:12px}
+    .hidden{display:none}
+    @media (max-width:980px){ .flex{flex-direction:column} .left{width:100%} .right{width:100%} }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div style="display:flex;flex-direction:column">
+        <h1>AI Visual Audit — Demo Checklist Tree</h1>
+        <div class="small-muted">Interactive demo: mark checks to compute section scores & overall Auto Audit Score</div>
+      </div>
+
+      <div class="top-actions">
+        <div class="controls">
+          <button id="loadDemo">Load Demo Results</button>
+          <button id="resetBtn" class="ghost">Reset</button>
+          <button id="exportJson" class="ghost">Export JSON</button>
+          <button id="exportCsv" class="ghost">Export CSV</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="flex">
+      <div class="left card">
+        <!-- Checklist sections will be rendered here -->
+        <div id="checklistRoot"></div>
+      </div>
+
+      <aside class="right card">
+        <div class="summary">
+          <div class="summary-row">
+            <div>
+              <div class="small-muted">Total Checks</div>
+              <div id="totalChecks" style="font-weight:700;font-size:18px">0</div>
+            </div>
+            <div style="text-align:right">
+              <div class="small-muted">Passed</div>
+              <div id="passedChecks" style="font-weight:700;font-size:18px">0</div>
+            </div>
+            <div>
+              <div class="small-muted">Overall Score</div>
+              <div class="score-pill" id="overallScore">0%</div>
+            </div>
+          </div>
+
+          <div style="margin-top:8px">
+            <div class="small-muted">Section Summary</div>
+            <table id="summaryTable" aria-live="polite">
+              <thead>
+                <tr><th>Section</th><th>Checks</th><th>Passed</th><th>Score</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="footer-note">
+            Tip: click a section header to collapse/expand. Use "Load Demo Results" to prefill sample values.
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    // Demo checklist data (matching the earlier conversation)
+    const initialData = [
+      { id: 'morning', title: 'Morning Meeting', checks: [
+        { id: 'mm1', text: 'Full view photo of CREs submitted', weight:1 },
+        { id: 'mm2', text: 'CRE grooming & uniform as per guidelines', weight:1 }
+      ]},
+      { id: 'cre_group', title: 'CRE Group Photo', checks: [
+        { id: 'cg1', text: 'CRE group photo present (FaceCount >= 2)', weight:1 }
+      ]},
+      { id: 'housekeeping', title: 'Housekeeping & Guard', checks: [
+        { id: 'hk1', text: 'Housekeeping staff photo submitted', weight:1 },
+        { id: 'hk2', text: 'Housekeeping staff in uniform & groomed', weight:1 }
+      ]},
+      { id: 'signage', title: 'Signage', checks: [
+        { id: 'sg1', text: 'Full view signage photo submitted', weight:1 },
+        { id: 'sg2', text: 'Signage clean & good condition', weight:1 },
+        { id: 'sg3', text: 'POP IN sticker present / visible', weight:1 },
+        { id: 'sg4', text: '5G glow flange condition', weight:1 },
+        { id: 'sg5', text: 'Digital signage content displaying correctly', weight:1 }
+      ]},
+      { id: 'store_exterior', title: 'Store Exterior', checks: [
+        { id: 'ex1', text: 'Entrance mat present & clean', weight:1 },
+        { id: 'ex2', text: 'Entrance door & handles good condition', weight:1 },
+        { id: 'ex3', text: 'Glass facade clean', weight:1 },
+        { id: 'ex4', text: 'Creatives & POP IN good condition', weight:1 },
+        { id: 'ex5', text: 'Door opens smoothly', weight:1 }
+      ]},
+      { id: 'branding', title: 'Branding Checks', checks: [
+        { id: 'br1', text: 'All creatives in good condition', weight:1 },
+        { id: 'br2', text: 'Counter markers present', weight:1 },
+        { id: 'br3', text: 'Tent cards present & updated', weight:1 }
+      ]},
+      { id: 'ssk', title: 'SSK', checks: [
+        { id: 'ssk1', text: 'SSK area photos captured', weight:1 },
+        { id: 'ssk2', text: 'Frosted vinyl pasted on SSK entrance glass', weight:1 },
+        { id: 'ssk3', text: 'No Entry sticker & cleanliness', weight:1 },
+        { id: 'ssk4', text: 'SSK area closed when required', weight:1 }
+      ]},
+      { id: 'washroom', title: 'Washroom', checks: [
+        { id: 'w1', text: 'Washroom labeled and clean', weight:1 },
+        { id: 'w2', text: 'Lights operational', weight:1 },
+        { id: 'w3', text: 'External washroom photo submitted', weight:1 }
+      ]},
+      { id: 'back_office', title: 'Back Office', checks: [
+        { id: 'b1', text: 'Back office photos submitted', weight:1 }
+      ]}
+    ];
+
+    // Demo fill (results we discussed earlier)
+    const demoResults = {
+      morning: { mm1: true, mm2: true },
+      cre_group: { cg1: false },    // FaceCount failed
+      housekeeping: { hk1: true, hk2: true },
+      signage: { sg1: true, sg2: true, sg3: false, sg4: true, sg5: false },
+      store_exterior: { ex1: true, ex2: true, ex3: true, ex4: true, ex5: false },
+      branding: { br1: false, br2: true, br3: true },
+      ssk: { ssk1: false, ssk2: false, ssk3: false, ssk4: true },
+      washroom: { w1: true, w2: true, w3: true },
+      back_office: { b1: true }
+    };
+
+    // State (will hold boolean pass/fail)
+    let state = {};
+
+    // Render the checklist tree
+    function renderChecklist(data) {
+      const root = document.getElementById('checklistRoot');
+      root.innerHTML = '';
+      state = {}; // reset
+
+      data.forEach(section => {
+        // section container
+        const s = document.createElement('div');
+        s.className = 'section';
+        s.dataset.section = section.id;
+
+        const head = document.createElement('div');
+        head.className = 'section-head';
+        head.innerHTML = `<div>
+                            <div class="section-title">${section.title}</div>
+                            <div class="meta small-muted">${section.checks.length} checks</div>
+                          </div>
+                          <div class="score-pill" id="pill-${section.id}">0%</div>`;
+        s.appendChild(head);
+
+        // clickable collapse
+        head.addEventListener('click', () => {
+          body.classList.toggle('hidden');
+        });
+
+        const body = document.createElement('div');
+        body.className = 'checks';
+
+        // each check
+        section.checks.forEach(ch => {
+          const row = document.createElement('div');
+          row.className = 'check';
+          row.dataset.checkId = ch.id;
+
+          // initialize state as false
+          if (!state[section.id]) state[section.id] = {};
+          state[section.id][ch.id] = false;
+
+          const left = document.createElement('div');
+          left.className = 'check-left';
+          const box = document.createElement('div');
+          box.className = 'checkbox';
+          box.innerHTML = '&#10003;'; // checkmark icon (hidden unless checked)
+
+          const labelWrap = document.createElement('div');
+          labelWrap.innerHTML = `<div style="font-weight:600">${ch.text}</div>
+                                 <div class="small">${ch.id} • weight ${ch.weight}</div>`;
+
+          left.appendChild(box);
+          left.appendChild(labelWrap);
+
+          const right = document.createElement('div');
+          right.style.minWidth = '110px';
+          right.style.textAlign = 'right';
+          right.innerHTML = `<div class="small-muted">weight ${ch.weight}</div>`;
+
+          // toggle behavior
+          box.addEventListener('click', () => {
+            state[section.id][ch.id] = !state[section.id][ch.id];
+            box.classList.toggle('checked', state[section.id][ch.id]);
+            computeAndRenderSummary();
+          });
+
+          row.appendChild(left);
+          row.appendChild(right);
+          body.appendChild(row);
+        });
+
+        s.appendChild(body);
+        root.appendChild(s);
+      });
+
+      computeAndRenderSummary();
+    }
+
+    // Compute section & overall scores
+    function computeAndRenderSummary() {
+      const summaryTbody = document.querySelector('#summaryTable tbody');
+      summaryTbody.innerHTML = '';
+      let totalChecks = 0, passed = 0;
+
+      initialData.forEach(section => {
+        const secState = state[section.id] || {};
+        const checksCount = section.checks.length;
+        totalChecks += checksCount;
+
+        let secPassed = 0;
+        section.checks.forEach(ch => {
+          if (secState[ch.id]) secPassed += 1 * (ch.weight || 1);
+        });
+        passed += secPassed;
+
+        const secScore = Math.round((secPassed / checksCount) * 100);
+        // update pill in left panel
+        const pill = document.getElementById('pill-' + section.id);
+        if (pill) pill.textContent = isNaN(secScore) ? '0%' : secScore + '%';
+
+        // append row
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${section.title}</td>
+                        <td>${checksCount}</td>
+                        <td>${secPassed}</td>
+                        <td>${isNaN(secScore)?'0%':secScore + '%'}</td>`;
+        summaryTbody.appendChild(tr);
+      });
+
+      const overallScore = totalChecks ? Math.round((passed / totalChecks) * 100) : 0;
+      document.getElementById('totalChecks').textContent = totalChecks;
+      document.getElementById('passedChecks').textContent = passed;
+      document.getElementById('overallScore').textContent = overallScore + '%';
+    }
+
+    // Load demo results into the UI
+    document.getElementById('loadDemo').addEventListener('click', () => {
+      // render first (to ensure state keys exist)
+      renderChecklist(initialData);
+
+      // apply demoResults
+      Object.keys(demoResults).forEach(sectionId => {
+        const checksObj = demoResults[sectionId] || {};
+        Object.keys(checksObj).forEach(checkId => {
+          const val = checksObj[checkId];
+          state[sectionId][checkId] = !!val;
+          // find checkbox element and toggle class
+          const sectionEl = document.querySelector(`[data-section="${sectionId}"]`);
+          if (!sectionEl) return;
+          const box = sectionEl.querySelector(`[data-check-id="${checkId}"] .checkbox`);
+          if (box) box.classList.toggle('checked', !!val);
+        });
+      });
+      computeAndRenderSummary();
+    });
+
+    // Reset
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      renderChecklist(initialData);
+    });
+
+    // Export JSON
+    document.getElementById('exportJson').addEventListener('click', () => {
+      const exportObj = {generatedAt: new Date().toISOString(), sections: []};
+      initialData.forEach(sec => {
+        const secState = state[sec.id] || {};
+        const total = sec.checks.length;
+        let passed = 0;
+        const checks = sec.checks.map(ch => {
+          const ok = !!secState[ch.id];
+          if (ok) passed += 1;
+          return {id: ch.id, text: ch.text, passed: ok};
+        });
+        exportObj.sections.push({id: sec.id, title: sec.title, total, passed, checks});
+      });
+      const blob = new Blob([JSON.stringify(exportObj, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'audit_results.json'; a.click(); URL.revokeObjectURL(url);
+    });
+
+    // Export CSV (section summary)
+    document.getElementById('exportCsv').addEventListener('click', () => {
+      let csv = 'Section,Total Checks,Passed,Score%\n';
+      initialData.forEach(sec => {
+        const secState = state[sec.id] || {};
+        const total = sec.checks.length;
+        let passed = 0;
+        sec.checks.forEach(ch => { if (secState[ch.id]) passed += 1; });
+        const score = total ? Math.round((passed / total) * 100) : 0;
+        csv += `"${sec.title}",${total},${passed},${score}%\n`;
+      });
+      const blob = new Blob([csv], {type: 'text/csv'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'audit_summary.csv'; a.click(); URL.revokeObjectURL(url);
+    });
+
+    // initial render
+    renderChecklist(initialData);
+  </script>
+</body>
+</html>

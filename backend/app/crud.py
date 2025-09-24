@@ -1,5 +1,5 @@
-from .database import AsyncSessionLocal
-from .models import Image, Audit
+from database import AsyncSessionLocal
+from models import Image, Audit
 from sqlalchemy import select
 from datetime import datetime, timedelta
 from typing import Dict, Any
